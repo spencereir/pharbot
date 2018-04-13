@@ -189,7 +189,6 @@ func LoadSheets() {
         }
 }
 
-
 func WriteExecution(exec JobExecution) {
     b, err := ioutil.ReadFile("client_secret.json")
     if err != nil {
@@ -237,6 +236,48 @@ func WriteExecution(exec JobExecution) {
     values[0] = append(values[0], is_read)
     values[0] = append(values[0], exec.host)
     values[0] = append(values[0], exec.command)
+
+    rb := &sheets.ValueRange{
+        Range: rangeData,
+        Values: values,
+    }
+
+    valueInputOption := "USER_ENTERED"
+    insertDataOption := "INSERT_ROWS"
+    ctx := context.Background()
+    resp, err := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb).ValueInputOption(valueInputOption).InsertDataOption(insertDataOption).Context(ctx).Do()
+    if err != nil {
+        fmt.Printf("%v\n", err)
+    }
+    fmt.Printf("%v\n", resp)
+}
+
+func WriteProdJob(job ProdJob) {
+    b, err := ioutil.ReadFile("client_secret.json")
+    if err != nil {
+        log.Fatalf("Unable to read client secret file: %v", err)
+    }
+
+    config, _ := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets")
+
+    c := getClient(config)
+
+    sheetsService, _ := sheets.New(c)
+
+    spreadsheetId := "1B84DImukPyqhSMDJmpE_lFZakMrAktdPfxp-emrR6Gc"
+
+    rangeData := "Run Job List!A3:G"
+
+    var values [][]interface{}
+    var one_row []interface{}
+    values = append(values, one_row)
+    values[0] = append(values[0], job.job_id)
+    values[0] = append(values[0], job.phab_task)
+    values[0] = append(values[0], job.summary)
+    values[0] = append(values[0], job.owner)
+    values[0] = append(values[0], job.backup_owner)
+    values[0] = append(values[0], job.lead_approver)
+    values[0] = append(values[0], job.diff_uri)
 
     rb := &sheets.ValueRange{
         Range: rangeData,
