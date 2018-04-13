@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"github.com/nlopes/slack"
 	"strings"
@@ -23,24 +24,24 @@ func HandlePhabRequest(s slack.SlashCommand, w http.ResponseWriter) {
     msg := strings.TrimSpace(s.Text)
     words := strings.Split(msg, " ")
     if len(words) == 0 {
-        w.Write(error_string)
+        w.Write(marshalMessage(error_string))
     } else if len(words) == 1 {
         if strings.ToLower(words[0]) == "help" {
-            w.Write("Hi, I'm your friendly neighbourhood cherry pick bot!\n" +
-            "Usage: `/cherry-pick <phab diff link> <sha> <tiers> <needs test?> <project lead for approval>` \n")
+            w.Write(marshalMessage("Hi, I'm your friendly neighbourhood cherry pick bot!\n" +
+            "Usage: `/cherry-pick <phab diff link> <sha> <tiers> <needs test?> <project lead for approval>` \n"))
         } else {
-            w.Write(error_string)
+            w.Write(marshalMessage(error_string))
         }
     } else if len(words) < 5 {
-        w.Write(error_string)
+        w.Write(marshalMessage(error_string))
     } else {
         last_index := len(words) - 1
         if words[last_index][0] != '@' {
             words[last_index] = "@" + words[last_index]
         }
         boolboy := strings.ToLower(words[last_index-1])
-        if boolboy != "true" && boolboy != "false" && boolboy != "yes" and boolboy != "no" {
-            w.Write("Hmm... " + words[last_index-1] "doesn't seem to be a boolean. Try yes/true/no/false for the needs test field. :)")
+        if boolboy != "true" && boolboy != "false" && boolboy != "yes" && boolboy != "no" {
+            w.Write(marshalMessage(fmt.Sprintf("Hmm... %v doesn't seem to be a boolean. Try yes/true/no/false for the needs test field.", words[last_index-1])))
         }
         pick_message := "Cherry-pick request from @" + s.UserName + ":\n" +
                        "Phab Diff: " + words[0] + "\n" +
