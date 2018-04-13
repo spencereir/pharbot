@@ -197,7 +197,7 @@ func WriteExecution(exec JobExecution) {
         log.Fatalf("Unable to read client secret file: %v", err)
     }
 
-    config, _ := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
+    config, _ := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets")
 
     c := getClient(config)
 
@@ -226,7 +226,7 @@ func WriteExecution(exec JobExecution) {
         Values: values,
     }
 
-    resp := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb).ValueInputOption("").InsertDataOption("").Context(ctx).Do()
+    resp, _ := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb).Do()
 
     fmt.Printf("%v\n", resp)
 }
