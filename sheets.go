@@ -66,7 +66,7 @@ func saveToken(path string, token *oauth2.Token) {
         json.NewEncoder(f).Encode(token)
 }
 
-func PrintSheets() {
+func LoadSheets() {
         b, err := ioutil.ReadFile("client_secret.json")
         if err != nil {
                 log.Fatalf("Unable to read client secret file: %v", err)
@@ -96,10 +96,38 @@ func PrintSheets() {
         if len(resp.Values) == 0 {
                 fmt.Println("No data found.")
         } else {
-                fmt.Println("Job ID, Summary:")
                 for _, row := range resp.Values {
-                        // Print columns A and E, which correspond to indices 0 and 4.
-                        fmt.Printf("%s, %s\n", row[0], row[2])
+                        job_id := -1
+                        phab_task := ""
+                        summary := ""
+                        owner := ""
+                        backup := ""
+                        lead_approver := ""
+                        diff_uri := ""
+                        if len(row) == 0 {
+                            continue
+                        }
+                        job_id = row[0]
+                        if len(row) > 1 {
+                            phab_task = row[1]
+                        }
+                        if len(row) > 2 {
+                            summary = row[2]
+                        }
+                        if len(row) > 3 {
+                            owner = row[3]
+                        }
+                        if len(row) > 4 {
+                            backup = row[4]
+                        }
+                        if len(row) > 5 {
+                            lead_approver = row[5]
+                        }
+                        if len(row) > 6 {
+                            diff_uri = row[6]
+                        }
+                        job := ProdJob{job_id: job_id, phab_task: phab_task, summary: summary, owner: owner, backup_owner: backup, lead_approver: lead_approver, diff_uri: diff_uri}
+                        append(prod_jobs, job)
                 }
         }
 }
