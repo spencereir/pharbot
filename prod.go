@@ -8,6 +8,7 @@ import (
 	"strings"
 	"math/rand"
 	"strconv"
+	"os"
 	"github.com/nlopes/slack"
 )
 
@@ -37,7 +38,7 @@ type JobExecution struct {
 var (
 	prod_jobs 	[]ProdJob		= []ProdJob{}
 	execution_log 	[]JobExecution		= []JobExecution{}
-	api		*slack.Client 		= slack.New("xoxp-347166826087-346016232387-347312673527-3da84a9a9faa987f9137d26430679351")
+	api		*slack.Client 		= slack.New(os.Getenv("SLACK_TOKEN"))
 	prod_channel_id string			= "CA60G6WRH"
 	floating_execs	map[int]JobExecution	= make(map[int]JobExecution)
 	msg_timestamp	map[int]string		= make(map[int]string)
@@ -46,6 +47,7 @@ var (
 func sendProdMessage(msg string) string {
 	params := slack.PostMessageParameters{}
 	_, timestamp, _ := api.PostMessage(prod_channel_id, msg, params)
+	fmt.Printf("sendProdMessage: %v\n", timestamp)
 	return timestamp
 }
 
@@ -179,12 +181,11 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			start_action := slack.AttachmentAction{Name: "start", Value: "start", Text: "Start Job", Type: "button", Style: "primary"}
 			cancel_action := slack.AttachmentAction{Name: "cancel", Value: "cancel", Text: "Cancel", Type: "button", Style: "danger"}
 			start_attach := slack.Attachment{Text: serializeJobExecution(exec), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
-			fmt.Printf(start_attach.CallbackID)
 			attachments := []slack.Attachment{start_attach}
 			ts := replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
 			floating_execs[exec.exec_id] = exec
 			msg_timestamp[exec.exec_id] = s.ChannelID + "|" + ts
-			fmt.Printf("\n%v\n", msg_timestamp[exec.exec_id])
+			fmt.Printf("%v\n", msg_timestamp[exec.exec_id])
 		case "search":
 			w.Write(marshalMessage("Not implemented yet. Sorry!"))
 		}
@@ -206,6 +207,7 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 		} else {
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			s := msg_timestamp[exec_id]
+			fmt.Printf("Timestamp str: %v\n", s)
 			xs := strings.Split(s, "|")
 			api.DeleteMessage(xs[0], xs[1])
 		}

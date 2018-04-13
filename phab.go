@@ -44,7 +44,7 @@ func HandlePhabRequest(s slack.SlashCommand, w http.ResponseWriter) {
             w.Write(marshalMessage(fmt.Sprintf("Hmm... %v doesn't seem to be a boolean. Try yes/true/no/false for the needs test field.", words[last_index-1])))
         }
         loopyboy := ""
-        for i := 2; i < last_index-1; ++i {
+        for i := 2; i < last_index-1; i++ {
             loopyboy += words[i]
             if i != last_index-2 {
                 if words[i][len(words[i])-1] == 'E' {
