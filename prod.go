@@ -46,6 +46,7 @@ var (
 	helptexts	map[string]string	= map[string]string {
 		"start": "*`/prod start`*: Start a new prod job.\n`/prod start <job id>` - start a previously run prod job, copying old parameters over\n`/prod start <job id> <oneoff> <writes> <primary read> <host> <command>` - start a new prod job, manually populating parameters\n`<job id>` must be a valid job ID (i.e., you have added it with `/prod new` or it shows up in `/prod search` or `/prod search`)\n`<oneoff>`, `<writes>`, `<primary read>` must be booleans; yes/no, true/false, 1/0 are accepted",
 		"stop": "*`/prod stop`*: Stop a job given the execution ID. This should only be used when the interactive button times out. In this case, run the command with the provided execution ID",
+		"list": "*`/prod list`*: List all active jobs. This includes jobs in the [start job / cancel] phase.",
 	}
 	helpmsg		string			=
 		"Pharbot: A simple bot to help out with (some) Phab and (mostly) Prod related things.\n`/prod start`: start a prod job\n`/prod new`: create a new prod job\n`/prod stop`: stop a prod job\n`/prod list`: list active prod jobs\n`/prod search`: search prod jobs / execution logs"
@@ -234,8 +235,6 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			start_attach := slack.Attachment{Text: serializeJobExecutionAndProdJob(exec, job), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
 			attachments := []slack.Attachment{start_attach}
 			replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
-			execution_log = append(execution_log, exec)
-			WriteExecution(exec)
 				
 			floating_execs[exec.exec_id] = exec
 			fmt.Printf("%v\n", msg_timestamp[exec.exec_id])
@@ -260,6 +259,12 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			}
 		case "new":
 			replyToSlash(s, "Not implemented yet--sorry!")
+		case "list":
+			msg := ""
+			for k, v := range floating_execs {
+				msg += fmt.Sprintf("@%v, %v\n", v.run_user, v.job_id)
+			}
+			replyToSlash(s, msg)
 		}
 	}	
 }
@@ -274,6 +279,8 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 		if cb.Actions[0].Name == "start" {
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			exec := floating_execs[exec_id]
+			execution_log = append(execution_log, exec)
+			WriteExecution(exec)
 			job := getProdJob(exec.job_id)
 			ts := sendProdMessage(fmt.Sprintf("%v\n", serializeProdJobAndJobExecution(job, exec)))
 			msg_timestamp[exec_id] = ts
@@ -282,7 +289,9 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 			done_attach := slack.Attachment{Text: fmt.Sprintf("This button will expire in 30 minutes. If you would like to end the job after this time, please run `/prod stop %v`", exec_id), Actions: []slack.AttachmentAction{done_action}, CallbackID: cb.CallbackID}
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessageAttachments("Thanks. Your message has been posted. The prod spreadsheet will update shortly. Click the button below when you have completed the job.", []slack.Attachment{done_attach})))
 		} else if cb.Actions[0].Name == "cancel" {
+			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("This job has been cancelled.")))
+			delete(floating_execs, exec_id)
 		} else {
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			if _, ok := floating_execs[exec_id]; ok {
@@ -302,12 +311,4 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 			}
 		}
 	}
-}
-
-func SyncProdJobs() {
-	// TODO: sync with Google Sheets
-}
-
-func SyncExecutionLog() {
-	// TODO: sync with google sheets
 }
