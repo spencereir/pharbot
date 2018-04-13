@@ -206,17 +206,35 @@ func WriteExecution(exec JobExecution) {
 
     rangeData := "Execution Audit Log!A3:L"
 
+    string is_one_off := ""
+    if exec.one_off {
+        is_one_off = "Yes"
+    } else {
+        is_one_off = "No"
+    }
+    string is_write := ""
+    if exec.writes {
+        is_write = "Yes"
+    } else {
+        is_write = "No"
+    }
+    string is_read := ""
+    if exec.primary_read {
+        is_read = "Yes"
+    } else {
+        is_read = "No"
+    }
+
     var values [][]interface{}
     var one_row []interface{}
     values = append(values, one_row)
     values[0] = append(values[0], exec.start_time)
     values[0] = append(values[0], exec.end_time)
-    values[0] = append(values[0], exec.run_user)
     values[0] = append(values[0], exec.job_id)
     values[0] = append(values[0], exec.run_user)
     values[0] = append(values[0], exec.one_off)
-    values[0] = append(values[0], exec.writes)
-    values[0] = append(values[0], exec.primary_read)
+    values[0] = append(values[0], is_write)
+    values[0] = append(values[0], exec.is_primary)
     values[0] = append(values[0], exec.host)
     values[0] = append(values[0], exec.command)
 
