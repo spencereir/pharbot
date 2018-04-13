@@ -144,6 +144,18 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 		case "help":
 			replyToSlash(s, helpmsg)
 		default:
+			// oops, process it anyway
+			if words[0] == "list" {
+				msg := ""
+				for _, v := range floating_execs {
+					msg += fmt.Sprintf("@%v, %v\n", v.run_user, v.job_id)
+				}
+				if msg == "" {
+					msg = "No active jobs"
+				}
+				replyToSlash(s, msg)
+				return
+			}
 			if val, ok := helptexts[words[0]]; ok {
 				replyToSlash(s, val)
 			} else {
@@ -258,13 +270,15 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 				replyToSlash(s, "It appears this job has already been completed.")
 			}
 		case "new":
+			new_prod_id := len(prod_jobs) + 1
+			replyToSlash(s, fmt.Sprintf("This can't generate jobs yet, but if it could you would get job id %v", new_prod_id))	
+		/*	phab_task	string
+			diff_uri	string
+			owner		string
+			backup_owner	string
+			lead_approver	string
+			summary		string*/
 			replyToSlash(s, "Not implemented yet--sorry!")
-		case "list":
-			msg := ""
-			for k, v := range floating_execs {
-				msg += fmt.Sprintf("@%v, %v\n", v.run_user, v.job_id)
-			}
-			replyToSlash(s, msg)
 		}
 	}	
 }
