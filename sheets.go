@@ -226,7 +226,7 @@ func WriteExecution(exec JobExecution) {
         Values: values,
     }
 
-    resp, _ := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb).Do()
+    resp, _ := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb).ValueInputOption("").InsertDataOption("").Context(ctx).Do()
 
     fmt.Printf("%v\n", resp)
 }
