@@ -37,14 +37,28 @@ type JobExecution struct {
 var (
 	prod_jobs 	[]ProdJob		= []ProdJob{}
 	execution_log 	[]JobExecution		= []JobExecution{}
-	api		*slack.Client 		= slack.New("xoxp-347166826087-346016232387-345532383296-db6fd31ef3d46686d89cea43c5dbbbdf")
+	api		*slack.Client 		= slack.New("xoxp-347166826087-346016232387-347312673527-3da84a9a9faa987f9137d26430679351")
 	prod_channel_id string			= "CA60G6WRH"
 	floating_execs	map[int]JobExecution	= make(map[int]JobExecution)
+	msg_timestamp	map[int]string		= make(map[int]string)
 )
 
-func sendProdMessage(msg string) {
+func sendProdMessage(msg string) string {
 	params := slack.PostMessageParameters{}
-	api.PostMessage(prod_channel_id, msg, params)
+	_, timestamp, _ := api.PostMessage(prod_channel_id, msg, params)
+	return timestamp
+}
+
+func replyToSlash(s slack.SlashCommand, msg string) string {
+	timestamp, _ := api.PostEphemeral(s.ChannelID, s.UserID, slack.MsgOptionText(msg, false))
+	fmt.Printf("replyToSlash: %v\n", timestamp)
+	return timestamp
+}
+
+func replyToSlashWithAttachments(s slack.SlashCommand, msg string, attachments []slack.Attachment) string {
+	timestamp, _ := api.PostEphemeral(s.ChannelID, s.UserID, slack.MsgOptionText(msg, false), slack.MsgOptionAttachments(attachments...))
+	fmt.Printf("replyToSlashA: %v\n", timestamp)
+	return timestamp
 }
 
 func marshalMessage(s string) []byte {
@@ -112,22 +126,22 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			if len(words) == 2 {
 				job_id, err := strconv.Atoi(words[1])
 				if err != nil {
-					w.Write(marshalMessage(fmt.Sprintf("Couldn't parse '%s' as a job ID. Please run `/prod start` or `/prod help start` for usage notes", words[1])))
+					replyToSlash(s, fmt.Sprintf("Couldn't parse '%s' as a job ID. Please run `/prod start` or `/prod help start` for usage notes", words[1]))
 					return
 				}
 				exec = generateExecutionFromPreviousExecution(job_id, s.UserName)
 				if (exec.exec_id < 0) {
-					w.Write(marshalMessage(fmt.Sprintf("It looks like job ID %v doesn't have any executions on record. Please create one with `/prod start %v <oneoff> <writes> <primary read> <host> <command>`. For example, `/prod start %v no no yes merchant-backend-master merch-dbshell`", job_id, job_id, job_id)))
+					replyToSlash(s, fmt.Sprintf("It looks like job ID %v doesn't have any executions on record. Please create one with `/prod start %v <oneoff> <writes> <primary read> <host> <command>`. For example, `/prod start %v no no yes merchant-backend-master merch-dbshell`", job_id, job_id, job_id))
 					return
 				}
 			} else {
 				if len(words) < 7 {
-					w.Write(marshalMessage("I can't parse that format. Please use the command in the form `/prod start <job id>` or `/prod start <job id> <oneoff> <writes> <primary read> <host> <command>`"))
+					replyToSlash(s, "I can't parse that format. Please use the command in the form `/prod start <job id>` or `/prod start <job id> <oneoff> <writes> <primary read> <host> <command>`")
 					return
 				}
 				job_id, err := strconv.Atoi(words[1])
 				if err != nil {
-					w.Write(marshalMessage(fmt.Sprintf("Couldn't parse '%v' as a job ID. Please run `/prod start` or `/prod help start` for usage notes", words[1])))
+					replyToSlash(s, fmt.Sprintf("Couldn't parse '%v' as a job ID. Please run `/prod start` or `/prod help start` for usage notes", words[1]))
 					return
 				}
 				oneoff := false
@@ -136,7 +150,8 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 				} else if words[2] == "no" || words[2] == "false" || words[2] == "0" {
 					oneoff = false
 				} else {
-					w.Write(marshalMessage(fmt.Sprintf("Couldn't parse '%v' as a boolean. Please use one of yes/no, true/false, 1/0", words[2])))
+					replyToSlash(s, fmt.Sprintf("Couldn't parse '%v' as a boolean. Please use one of yes/no, true/false, 1/0", words[2]))
+					return
 				}
 				writes := false
 				if words[3] == "yes" || words[3] == "true" || words[3] == "1" {
@@ -144,7 +159,8 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 				} else if words[3] == "no" || words[3] == "false" || words[3] == "0" {
 					writes = false
 				} else {
-					w.Write(marshalMessage(fmt.Sprintf("Couldn't parse '%v' as a boolean. Please use one of yes/no, true/false, 1/0", words[3])))
+					replyToSlash(s, fmt.Sprintf("Couldn't parse '%v' as a boolean. Please use one of yes/no, true/false, 1/0", words[3]))
+					return
 				}
 				primary_read := false
 				if words[4] == "yes" || words[4] == "true" || words[4] == "1" {
@@ -152,7 +168,8 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 				} else if words[4] == "no" || words[4] == "false" || words[4] == "0" {
 					primary_read = false
 				} else {
-					w.Write(marshalMessage(fmt.Sprintf("Couldn't parse '%v' as a boolean. Please use one of yes/no, true/false, 1/0", words[4])))
+					replyToSlash(s, fmt.Sprintf("Couldn't parse '%v' as a boolean. Please use one of yes/no, true/false, 1/0", words[4]))
+					return
 				}
 				host := words[5]
 				command := strings.Join(words[6:], " ")
@@ -164,9 +181,10 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			start_attach := slack.Attachment{Text: serializeJobExecution(exec), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
 			fmt.Printf(start_attach.CallbackID)
 			attachments := []slack.Attachment{start_attach}
-			w.Write(marshalMessageAttachments("Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments))
-			w.Write(marshalMessage("farbod"))
+			ts := replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
 			floating_execs[exec.exec_id] = exec
+			msg_timestamp[exec.exec_id] = s.ChannelID + "|" + ts
+			fmt.Printf("\n%v\n", msg_timestamp[exec.exec_id])
 		case "search":
 			w.Write(marshalMessage("Not implemented yet. Sorry!"))
 		}
@@ -174,6 +192,7 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 }
 
 func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) {
+	api.SetDebug(true)
 	fmt.Printf("%v\n%v\n", cb.CallbackID, len(cb.Actions))
 	for _, v := range cb.Actions {
 		fmt.Printf("%v\n", v.Name)
@@ -184,6 +203,11 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 			exec := floating_execs[exec_id]
 			fmt.Printf("Send message to prod")
 			sendProdMessage(fmt.Sprintf("Start Prod Job:\n%v", serializeJobExecution(exec)))
+		} else {
+			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
+			s := msg_timestamp[exec_id]
+			xs := strings.Split(s, "|")
+			api.DeleteMessage(xs[0], xs[1])
 		}
 	}
 }
