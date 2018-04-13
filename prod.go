@@ -48,7 +48,7 @@ var (
 		"stop": "*`/prod stop`*: Stop a job given the execution ID. This should only be used when the interactive button times out. In this case, run the command with the provided execution ID",
 		"list": "*`/prod list`*: List all active jobs. This includes jobs in the [start job / cancel] phase.",
 		"new": "*`/prod new`*: Create a new prod job.\n`/prod new <phab task> <diff URI> <owner> <backup owner> <lead approver> <summary>` - create a new prod job with the listed parameters; also returns the ID of the job for use with `/prod start`.",
-		"search": "*`/prod search`*: Search prod jobs, execution logs.\n`/prod search execution <query>` - search job execution logs for `query`\n`/prod search jobs <query>` - search prod jobs for `query`",
+		"search": "*`/prod search`*: Search prod jobs, execution logs.\n`/prod search executions <query>` - search job execution logs for `query`\n`/prod search jobs <query>` - search prod jobs for `query`",
 	}
 	helpmsg		string			=
 		"Pharbot: A simple bot to help out with (some) Phab and (mostly) Prod related things.\n`/prod start`: start a prod job\n`/prod new`: create a new prod job\n`/prod stop`: stop a prod job\n`/prod list`: list active prod jobs\n`/prod search`: search prod jobs / execution logs"
@@ -258,7 +258,10 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			floating_execs[exec.exec_id] = exec
 			fmt.Printf("%v\n", msg_timestamp[exec.exec_id])
 		case "search":
-			replyToSlash(s, "Not implemented yet--sorry!")
+			if len(words) < 3 {
+				replyToSlash(s, "I can't parse that format. Please use the format `/prod search executions <query>` or `/prod search jobs <query>`")
+				return
+			}
 		case "stop":
 			exec_id, _ := strconv.Atoi(words[1])
 			if _, ok := floating_execs[exec_id]; ok {
@@ -290,7 +293,8 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			summary := strings.Join(words[6:], " ")
 			
 			job := ProdJob{job_id: new_prod_id, phab_task: phab_task, diff_uri: diff_uri, owner: owner, backup_owner: backup_owner, lead_approver: lead_approver, summary: summary}
-			//WriteProdJob(job)
+			WriteProdJob(job)
+			prod_jobs = append(prod_jobs, job)
 			replyToSlash(s, fmt.Sprintf("Created prod job:\n%v", serializeProdJob(job)))
 		}
 	}	
@@ -325,6 +329,7 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 				for _, v := range execution_log {
 					if v.exec_id == exec_id {
 						v.end_time = time.Now()
+						MarkExecCompleted(v)
 					}
 				}
 				ts := msg_timestamp[exec_id]

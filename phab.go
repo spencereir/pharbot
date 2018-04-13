@@ -46,7 +46,7 @@ func HandlePhabRequest(s slack.SlashCommand, w http.ResponseWriter) {
         for i := 2; i < last_index-1; i++ {
             loopyboy += words[i]
             if i != last_index-2 {
-                if strings.ToLower(words[i][len(words[i])-1]) == 'e' {
+                if strings.ToLower(words[i])[len(words[i])-1] == 'e' {
                     loopyboy += ", "
                 } else {
                     loopyboy += " "

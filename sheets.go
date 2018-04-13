@@ -310,7 +310,7 @@ func MarkExecCompleted(exec JobExecution) {
 
     rangeData := "Execution Audit Log!A3:L"
 
-    resp, _ := sheetsService.Spreadsheet.Values.Get(spreadsheedId, rangeData)
+    resp, _ := sheetsService.Spreadsheets.Values.Get(spreadsheetId, rangeData).Do()
 
     row := 0
 
@@ -318,7 +318,7 @@ func MarkExecCompleted(exec JobExecution) {
         if len(resp.Values[len(resp.Values)-1-i]) <= 2 {
             continue
         }
-        if strconv.Atoi(resp.Values[len(resp.Values)-1-i][2].(string)) == exec.job_id {
+        if val, _ := strconv.Atoi(resp.Values[len(resp.Values)-1-i][2].(string)); val == exec.job_id {
            row = len(resp.Values) - i
            break
        }
@@ -337,8 +337,10 @@ func MarkExecCompleted(exec JobExecution) {
    }
 
    valueInputOption := "USER_ENTERED"
-   insertDataOption := "INSERT_ROWS"
    ctx := context.Background()
-   resp, _ := sheetsService.Spreadsheets.Values.Update(spreadsheetId, rowData, rb).ValueInputOption(valueInputOption).InsertDataOption(insertDataOption).Context(ctx).Do()
-   fmt.Printf("%v\n", resp)
+   resp2, err := sheetsService.Spreadsheets.Values.Update(spreadsheetId, rowData, rb).ValueInputOption(valueInputOption).Context(ctx).Do()
+   if err != nil {
+      fmt.Printf("%v\n", err)
+   }
+   fmt.Printf("%v\n", resp2)
 }
