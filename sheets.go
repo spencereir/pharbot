@@ -7,6 +7,7 @@ import (
         "log"
         "net/http"
         "os"
+	"strconv"
 
         "golang.org/x/net/context"
         "golang.org/x/oauth2"
@@ -107,27 +108,27 @@ func LoadSheets() {
                         if len(row) == 0 {
                             continue
                         }
-                        job_id = row[0]
+                        job_id, _ = strconv.Atoi(row[0].(string))
                         if len(row) > 1 {
-                            phab_task = row[1]
+                            phab_task = row[1].(string)
                         }
                         if len(row) > 2 {
-                            summary = row[2]
+                            summary = row[2].(string)
                         }
                         if len(row) > 3 {
-                            owner = row[3]
+                            owner = row[3].(string)
                         }
                         if len(row) > 4 {
-                            backup = row[4]
+                            backup = row[4].(string)
                         }
                         if len(row) > 5 {
-                            lead_approver = row[5]
+                            lead_approver = row[5].(string)
                         }
                         if len(row) > 6 {
-                            diff_uri = row[6]
+                            diff_uri = row[6].(string)
                         }
                         job := ProdJob{job_id: job_id, phab_task: phab_task, summary: summary, owner: owner, backup_owner: backup, lead_approver: lead_approver, diff_uri: diff_uri}
-                        append(prod_jobs, job)
+                        prod_jobs = append(prod_jobs, job)
                 }
         }
 }
