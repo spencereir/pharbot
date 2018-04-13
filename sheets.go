@@ -252,3 +252,52 @@ func WriteExecution(exec JobExecution) {
     }
     fmt.Printf("%v\n", resp)
 }
+
+func MarkExecCompleted(exec JobExecution) {
+    b, err := ioutil.ReadFile("client_secret.json")
+    if err != nil {
+        log.Fatalf("Unable to read client secret file: %v", err)
+    }
+
+    config, _ := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets")
+
+    c := getClient(config)
+
+    sheetsService, _ := sheets.New(c)
+
+    spreadsheetId := "1B84DImukPyqhSMDJmpE_lFZakMrAktdPfxp-emrR6Gc"
+
+    rangeData := "Execution Audit Log!A3:L"
+
+    resp, _ := sheetsService.Spreadsheet.Values.Get(spreadsheedId, rangeData)
+
+    row := 0
+
+    for i := range resp.Values {
+        if len(resp.Values[len(resp.Values)-1-i]) <= 2 {
+            continue
+        }
+        if strconv.Atoi(resp.Values[len(resp.Values)-1-i][2].(string)) == exec.job_id {
+           row = len(resp.Values) - i
+           break
+       }
+   }
+
+   rowData := "Execution Audit Log!B" + strconv.Itoa(row) + ":B" + strconv.Itoa(row)
+
+   var values [][]interface{}
+   var one_row []interface{}
+   values = append(values, one_row)
+   values[0] = append(values[0], exec.end_time)
+
+   rb := &sheets.ValueRange{
+       Range: rowData,
+       Values: values,
+   }
+
+   valueInputOption := "USER_ENTERED"
+   insertDataOption := "INSERT_ROWS"
+   ctx := context.Background()
+   resp, _ := sheetsService.Spreadsheets.Values.Update(spreadsheetId, rangeData, rb).ValueInputOption(valueInputOption).InsertDataOption(insertDataOption).Context(ctx).Do()
+   fmt.Printf("%v\n", resp)
+}

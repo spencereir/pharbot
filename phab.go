@@ -19,7 +19,6 @@ func sendDeploymentMessage(msg string) {
 }
 
 func HandlePhabRequest(s slack.SlashCommand, w http.ResponseWriter) {
-    // comment
     w.Header().Set("Content-Type", "application/json")
     msg := strings.TrimSpace(s.Text)
     words := strings.Split(msg, " ")
@@ -47,7 +46,7 @@ func HandlePhabRequest(s slack.SlashCommand, w http.ResponseWriter) {
         for i := 2; i < last_index-1; i++ {
             loopyboy += words[i]
             if i != last_index-2 {
-                if words[i][len(words[i])-1] == 'E' {
+                if strings.ToLower(words[i][len(words[i])-1]) == 'e' {
                     loopyboy += ", "
                 } else {
                     loopyboy += " "
