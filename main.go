@@ -38,8 +38,8 @@ func main() {
 		}
 
 		switch s.Command {
-		case "/echo":
-			params := &slack.Msg{Text: s.Text}
+		case "/pharbot":
+			params := &slack.Msg{Text: "Run `/prod` for a list of prod related commands, or `/cherry-pick` to get help putting in a cherry-pick request"}
 			b, err := json.Marshal(params)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)

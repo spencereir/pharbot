@@ -47,6 +47,8 @@ var (
 		"start": "*`/prod start`*: Start a new prod job.\n`/prod start <job id>` - start a previously run prod job, copying old parameters over\n`/prod start <job id> <oneoff> <writes> <primary read> <host> <command>` - start a new prod job, manually populating parameters\n`<job id>` must be a valid job ID (i.e., you have added it with `/prod new` or it shows up in `/prod search` or `/prod search`)\n`<oneoff>`, `<writes>`, `<primary read>` must be booleans; yes/no, true/false, 1/0 are accepted",
 		"stop": "*`/prod stop`*: Stop a job given the execution ID. This should only be used when the interactive button times out. In this case, run the command with the provided execution ID",
 		"list": "*`/prod list`*: List all active jobs. This includes jobs in the [start job / cancel] phase.",
+		"new": "*`/prod new`*: Create a new prod job.\n`/prod new <phab task> <diff URI> <owner> <backup owner> <lead approver> <summary>` - create a new prod job with the listed parameters; also returns the ID of the job for use with `/prod start`.",
+		"search": "*`/prod search`*: Search prod jobs, execution logs.\n`/prod search execution <query>` - search job execution logs for `query`\n`/prod search jobs <query>` - search prod jobs for `query`",
 	}
 	helpmsg		string			=
 		"Pharbot: A simple bot to help out with (some) Phab and (mostly) Prod related things.\n`/prod start`: start a prod job\n`/prod new`: create a new prod job\n`/prod stop`: stop a prod job\n`/prod list`: list active prod jobs\n`/prod search`: search prod jobs / execution logs"
@@ -120,6 +122,11 @@ func serializeProdJobAndJobExecution(job ProdJob, exec JobExecution) string {
 	} else {
 		return fmt.Sprintf("Job notification on the behalf of @%v (Run User: @%v)\n[prod] [job id %v] %v", job.owner, exec.run_user, job.job_id, job.summary)
 	}
+}
+
+func serializeProdJob(job ProdJob) string {
+	return fmt.Sprintf("*ID:* %v\n*Summary:* %v\n*Owner:* @%v\n*Backup Owner:* @%v\n*Lead Approver:* @%v\n*Phab Task:* %v\n*Diff URI:* %v\n",
+		job.job_id, job.summary, job.owner, job.backup_owner, job.lead_approver, job.phab_task, job.diff_uri)
 }
 
 func getProdJob(job_id int) ProdJob {
@@ -271,14 +278,20 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			}
 		case "new":
 			new_prod_id := len(prod_jobs) + 1
-			replyToSlash(s, fmt.Sprintf("This can't generate jobs yet, but if it could you would get job id %v", new_prod_id))	
-		/*	phab_task	string
-			diff_uri	string
-			owner		string
-			backup_owner	string
-			lead_approver	string
-			summary		string*/
-			replyToSlash(s, "Not implemented yet--sorry!")
+			if len(words) < 7 {
+				replyToSlash(s, "I can't parse that format. Please use the format `/prod new <phab task> <diff URI> <owner> <backup owner> <lead approver> <summary>`. For example, `/prod new https://phab.wish.com/T1234321 https://phab.wish.com/D1234321 jsmith jdoe jdoe Recalibrate Flux Capacitors`")
+				return
+			}
+			phab_task := words[1]
+			diff_uri := words[2]
+			owner := words[3]
+			backup_owner := words[4]
+			lead_approver := words[5]
+			summary := strings.Join(words[6:], " ")
+			
+			job := ProdJob{job_id: new_prod_id, phab_task: phab_task, diff_uri: diff_uri, owner: owner, backup_owner: backup_owner, lead_approver: lead_approver, summary: summary}
+			//WriteProdJob(job)
+			replyToSlash(s, fmt.Sprintf("Created prod job:\n%v", serializeProdJob(job)))
 		}
 	}	
 }
