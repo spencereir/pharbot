@@ -14,7 +14,7 @@ var (
 
 func sendDeploymentMessage(msg string) {
     api.SetDebug(true)
-    params := slack.PostMessageParameters{}
+    params := slack.PostMessageParameters{LinkNames: 1}
     api.PostMessage(channel_id, msg, params)
 }
 
