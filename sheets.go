@@ -7,6 +7,7 @@ import (
         "log"
         "net/http"
         "os"
+	"strings"
         "strconv"
         "time"
 
@@ -166,13 +167,13 @@ func LoadSheets() {
                     run_user = row[3].(string)
                 }
                 if len(row) > 4 {
-                    one_off = string.ToLower(row[4].(string)) == "no"
+                    one_off = strings.ToLower(row[4].(string)) == "no"
                 }
                 if len(row) > 5 {
-                    writes = string.ToLower(row[5].(string)) == "no"
+                    writes = strings.ToLower(row[5].(string)) == "no"
                 }
                 if len(row) > 6 {
-                    primary_read = string.ToLower(row[6].(string)) == "no"
+                    primary_read = strings.ToLower(row[6].(string)) == "no"
                 }
                 if len(row) > 7 {
                     host = row[7].(string)
@@ -181,7 +182,7 @@ func LoadSheets() {
                     command = row[8].(string)
                 }
 
-                exec = JobExecution{exec_id: exec_id, start_time: start_time, end_time: end_time, job_id: job_id, run_user: run_user, one_off: one_off, writes: writes, primary_read: primary_read, host: host, command: command}
+                exec := JobExecution{exec_id: exec_id, start_time: start_time, end_time: end_time, job_id: job_id, run_user: run_user, one_off: one_off, writes: writes, primary_read: primary_read, host: host, command: command}
 
                 execution_log = append(execution_log, exec)
             }

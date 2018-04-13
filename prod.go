@@ -99,13 +99,23 @@ func generateExecutionFromPreviousExecution(job_id int, user string) JobExecutio
 	return JobExecution{exec_id: -1}
 }
 
+func serializeJobExecutionAndProdJob(exec JobExecution, job ProdJob) string {
+	return fmt.Sprintf("*Job ID:* %v (%v)\n*Run User:* @%v\n*Oneoff:* %v\n*Writes*: %v\n*Primary Reads:* %v\n*Host:* `%v`\n*Command:* `%v`",
+				exec.job_id, job.summary, exec.run_user, exec.one_off, exec.writes, exec.primary_read, exec.host, exec.command)
+}
+
 func serializeJobExecution(exec JobExecution) string {
 	return fmt.Sprintf("*Job ID:* %v\n*Run User:* @%v\n*Oneoff:* %v\n*Writes*: %v\n*Primary Reads:* %v\n*Host:* `%v`\n*Command:* `%v`",
 				exec.job_id, exec.run_user, exec.one_off, exec.writes, exec.primary_read, exec.host, exec.command)
 }
 
-func serializeProdJob(job ProdJob) string {
-	return fmt.Sprintf("Job notification on the behalf of @%v\n[prod] [job id %v] %v", job.owner, job.job_id, job.summary)
+// This has totally different behaviour from its transposed partner. Don't think too hard about it.
+func serializeProdJobAndJobExecution(job ProdJob, exec JobExecution) string {
+	if (job.owner == exec.run_user) {
+		return fmt.Sprintf("Job notification on the behalf of @%v\n[prod] [job id %v] %v", job.owner, job.job_id, job.summary)
+	} else {
+		return fmt.Sprintf("Job notification on the behalf of @%v (Run User: @%v)\n[prod] [job id %v] %v", job.owner, exec.run_user, job.job_id, job.summary)
+	}
 }
 
 func getProdJob(job_id int) ProdJob {
@@ -218,7 +228,7 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 
 			start_action := slack.AttachmentAction{Name: "start", Value: "start", Text: "Start Job", Type: "button", Style: "primary"}
 			cancel_action := slack.AttachmentAction{Name: "cancel", Value: "cancel", Text: "Cancel", Type: "button", Style: "danger"}
-			start_attach := slack.Attachment{Text: serializeJobExecution(exec), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
+			start_attach := slack.Attachment{Text: serializeJobExecutionAndProdJob(exec, job), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
 			attachments := []slack.Attachment{start_attach}
 			replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
 			floating_execs[exec.exec_id] = exec
@@ -242,7 +252,7 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			exec := floating_execs[exec_id]
 			job := getProdJob(exec.job_id)
-			sendProdMessage(fmt.Sprintf("%v\n", serializeProdJob(job)))
+			sendProdMessage(fmt.Sprintf("%v\n", serializeProdJobAndJobExecution(job, exec)))
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("Thanks. Your message has been posted. The prod spreadsheet will update shortly.")))
 		} else {
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("This job has been cancelled.")))
