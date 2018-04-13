@@ -57,7 +57,9 @@ func main() {
 	})
 	
 	http.HandleFunc("/interact", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Printf("bogoogogalgal")
 		cb := ParseInteractiveCallback(r)
+		fmt.Printf("Bgoaogaogalga %v", cb.CallbackID)
 		if (strings.HasPrefix(cb.CallbackID, "prod")) {
 			HandleProdAction(cb, w)
 		}

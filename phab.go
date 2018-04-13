@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"github.com/nlopes/slack"
     "encoding/json"
 )

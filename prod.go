@@ -43,7 +43,6 @@ var (
 )
 
 func sendProdMessage(msg string) {
-	api.SetDebug(true);
 	params := slack.PostMessageParameters{}
 	api.PostMessage(prod_channel_id, msg, params)
 }
@@ -160,9 +159,10 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 				exec = generateExecution(job_id, s.UserName, oneoff, writes, primary_read, host, command)
 			}
 			
-			start_action := slack.AttachmentAction{Name: "start", Text: "Start Job", Type: "button"}
+			start_action := slack.AttachmentAction{Name: "prod_start", Value: "start", Text: "Start Job", Type: "button", Style: "primary"}
+			//cancel_action := slack.AttachmentAction{Name: "prod_start", Value: "cancel", Text: "Cancel", Type: "button", Style: "danger"}
 			start_attach := slack.Attachment{Text: serializeJobExecution(exec), Actions: []slack.AttachmentAction{start_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
-			fmt.Printf("%v\n", start_attach.CallbackID)
+			fmt.Printf(start_attach.CallbackID)
 			attachments := []slack.Attachment{start_attach}
 			w.Write(marshalMessageAttachments("Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments))
 			floating_execs[exec.exec_id] = exec
@@ -173,7 +173,10 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 }
 
 func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) {
-	fmt.Printf("%v\n", cb.CallbackID)
+	fmt.Printf("%v\n%v\n", cb.CallbackID, len(cb.Actions))
+	for _, v := range cb.Actions {
+		fmt.Printf("%v\n", v.Name)
+	}
 	if strings.HasPrefix(cb.CallbackID, "prod_start_") {
 		exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 		exec := floating_execs[exec_id]
