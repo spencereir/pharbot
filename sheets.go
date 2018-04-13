@@ -324,6 +324,8 @@ func MarkExecCompleted(exec JobExecution) {
        }
    }
 
+   row++
+   row++	// "try it" ~ afoley
    rowData := "Execution Audit Log!B" + strconv.Itoa(row) + ":B" + strconv.Itoa(row)
 
    var values [][]interface{}
