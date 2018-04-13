@@ -14,7 +14,7 @@ var (
 
 func sendDeploymentMessage(msg string) {
     api.SetDebug(true)
-    params := slack.PostMessageParameters{LinkNames: 1}
+    params := slack.PostMessageParameters{LinkNames: 1, Markdown: true}
     api.PostMessage(channel_id, msg, params)
 }
 
@@ -55,12 +55,12 @@ func HandlePhabRequest(s slack.SlashCommand, w http.ResponseWriter) {
             }
         }
 
-        pick_message := "Cherry-pick request from @" + s.UserName + ":\n" +
-                       "Phab Diff: " + words[0] + "\n" +
-                       "SHA: " + words[1] + "\n" +
-                       "Tiers: " + strings.Join(words[2:last_index-1], ", ") + "\n" +
-                       "Testing Required: " + words[last_index-1] + "\n" +
-                       "Approver: " + words[last_index]
+        pick_message := "*Cherry-pick request from @*" + s.UserName + ":\n" +
+                       "*Phab Diff: *" + words[0] + "\n" +
+                       "*SHA: *" + words[1] + "\n" +
+                       "*Tiers: *" + strings.Join(words[2:last_index-1], ", ") + "\n" +
+                       "*Testing Required: *" + words[last_index-1] + "\n" +
+                       "*Approver: *" + words[last_index]
         sendDeploymentMessage(pick_message)
     }
 }
