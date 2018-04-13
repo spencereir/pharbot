@@ -167,13 +167,13 @@ func LoadSheets() {
                     run_user = row[3].(string)
                 }
                 if len(row) > 4 {
-                    one_off = strings.ToLower(row[4].(string)) == "no"
+                    one_off = strings.ToLower(row[4].(string)) != "no"
                 }
                 if len(row) > 5 {
-                    writes = strings.ToLower(row[5].(string)) == "no"
+                    writes = strings.ToLower(row[5].(string)) != "no"
                 }
                 if len(row) > 6 {
-                    primary_read = strings.ToLower(row[6].(string)) == "no"
+                    primary_read = strings.ToLower(row[6].(string)) != "no"
                 }
                 if len(row) > 7 {
                     host = row[7].(string)
