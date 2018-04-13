@@ -225,7 +225,9 @@ func WriteExecution(exec JobExecution) {
         Values: values,
     }
 
-    ctx := Context.Background()
+    valueInputOption := "USER_ENTERED"
+    insertDataOption := "INSERT_ROWS"
+    ctx := context.Background()
     resp, err := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb).ValueInputOption(valueInputOption).InsertDataOption(insertDataOption).Context(ctx).Do()
     if err != nil {
         fmt.Printf("%v\n", err)
