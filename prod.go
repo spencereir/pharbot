@@ -10,7 +10,10 @@ import (
 	"strconv"
 	"os"
 	"bytes"
+	"sort"
 	"github.com/nlopes/slack"
+	"github.com/renstrom/fuzzysearch/fuzzy"
+	"gopkg.in/gomail.v2"
 )
 
 type ProdJob struct {
@@ -262,6 +265,28 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 				replyToSlash(s, "I can't parse that format. Please use the format `/prod search executions <query>` or `/prod search jobs <query>`")
 				return
 			}
+			serials := []string{}
+			if words[1] == "executions" {
+				for _, exec := range execution_log {
+					serials = append(serials, serializeJobExecution(exec))
+				}
+			} else if words[1] == "jobs" {
+				for _, job := range prod_jobs {
+					serials = append(serials, serializeProdJob(job))
+				}
+			} else {
+				replyToSlash(s, fmt.Sprintf("The search domain must be one of `executions` or `jobs`; `%v` is invalid", words[1]))
+			}
+			matches := fuzzy.RankFind(strings.Join(words[2:], " "), serials)
+			sort.Sort(matches)
+			msg := ""
+			for i := 0; i < 3; i++ {
+				if i >= len(matches) {
+					break
+				}
+				msg += fmt.Sprintf("*Match %v*:\n%v\n", i+1, matches[i])
+			}	
+			replyToSlash(s, msg)
 		case "stop":
 			exec_id, _ := strconv.Atoi(words[1])
 			if _, ok := floating_execs[exec_id]; ok {
@@ -319,6 +344,17 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 			done_action := slack.AttachmentAction{Name: "done", Value: "done", Text: "Finish Job", Type: "button"}
 			done_attach := slack.Attachment{Text: fmt.Sprintf("This button will expire in 30 minutes. If you would like to end the job after this time, please run `/prod stop %v`", exec_id), Actions: []slack.AttachmentAction{done_action}, CallbackID: cb.CallbackID}
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessageAttachments("Thanks. Your message has been posted. The prod spreadsheet will update shortly. Click the button below when you have completed the job.", []slack.Attachment{done_attach})))
+			m := gomail.NewMessage()
+			m.SetHeader("From", fmt.Sprintf("%v@wish.com", exec.run_user))
+			m.SetHeader("To", "afoley@wish.com")
+			m.SetHeader("Subject", fmt.Sprintf("[prod] [job-id %v] %v", exec.job_id, job.summary))
+
+			d := gomail.NewDialer("smtp.gmail.com", 465, "swhitehead@contextlogic.com", "you wish")
+
+			// Send the email to Bob, Cora and Dan.
+			if err := d.DialAndSend(m); err != nil {
+			    panic(err)
+			}	
 		} else if cb.Actions[0].Name == "cancel" {
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("This job has been cancelled.")))
