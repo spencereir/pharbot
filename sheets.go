@@ -7,7 +7,8 @@ import (
         "log"
         "net/http"
         "os"
-	"strconv"
+        "strconv"
+        "time"
 
         "golang.org/x/net/context"
         "golang.org/x/oauth2"
@@ -131,4 +132,59 @@ func LoadSheets() {
                         prod_jobs = append(prod_jobs, job)
                 }
         }
+
+        readRange = "Execution Audit Log!A3:L"
+        resp, err = srv.Spreadsheets.Values.Get(spreadsheetId, readRange).Do()
+        if err != nil {
+            log.Fatalf("Unable to retrieve data from sheet: %v", err)
+        } else {
+            for id, row := range resp.Values {
+                exec_id := id
+                start_time := time.Now()
+                end_time := time.Now()
+                job_id := -1
+                run_user := ""
+                one_off := false
+                writes := false
+                primary_read := false
+                host := ""
+                command := ""
+
+                if len(row) == 0 {
+                    continue
+                }
+                // TODO: figure out how to handle start
+                // start_time = row[0].(string)
+                if len(row) > 1 {
+                    // same with start
+                    // end_time = row[1].(string)
+                }
+                if len(row) > 2 {
+                    job_id, _ = strconv.Atoi(row[2].(string))
+                }
+                if len(row) > 3 {
+                    run_user = row[3].(string)
+                }
+                if len(row) > 4 {
+                    one_off = string.ToLower(row[4].(string)) == "no"
+                }
+                if len(row) > 5 {
+                    writes = string.ToLower(row[5].(string)) == "no"
+                }
+                if len(row) > 6 {
+                    primary_read = string.ToLower(row[6].(string)) == "no"
+                }
+                if len(row) > 7 {
+                    host = row[7].(string)
+                }
+                if len(row) > 8 {
+                    command = row[8].(string)
+                }
+
+                exec = JobExecution{exec_id: exec_id, start_time: start_time, end_time: end_time, job_id: job_id, run_user: run_user, one_off: one_off, writes: writes, primary_read: primary_read, host: host, command: command}
+
+                execution_log = append(execution_log, exec)
+            }
+        }
 }
+
