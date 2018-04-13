@@ -48,18 +48,8 @@ func main() {
 			w.Write(b)
 		case "/prod":
 			HandleProdRequest(s, w)
-			/*start_action := slack.AttachmentAction{Name: "start", Text: "Start Job", Type: "button"}
-			start_attach := slack.Attachment{Text: "test", Actions: []slack.AttachmentAction{start_action}, CallbackID: "prod_start"}
-			attachments := []slack.Attachment{start_attach}
-			params := &slack.Msg{Text: s.Text, Attachments: attachments}
-			b, err := json.Marshal(params)
-			//fmt.Printf("%s\n", b)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("Content-Type", "application/json")
-			w.Write(b)*/
+		case "/cherrypick":
+			HandlePhabRequest(s, w)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
 			return
