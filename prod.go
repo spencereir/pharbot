@@ -44,9 +44,11 @@ var (
 	floating_execs	map[int]JobExecution	= make(map[int]JobExecution)
 	msg_timestamp	map[int]string		= make(map[int]string)
 	helptexts	map[string]string	= map[string]string {
-		"start": "*`/prod start`*: Start a new prod job.\n`/prod start <job id>` - start a previously run prod job, copying old parameters over\n`/prod start <job id> <oneoff> <writes> <primary read> <host> <command>` - start a new prod job, manually populating parameters\n`<job id>` must be a valid job ID (i.e., you have added it with `/prod new` or it shows up in `/prod list` or `/prod search`)\n`<oneoff>`, `<writes>`, `<primary read>` must be booleans; yes/no, true/false, 1/0 are accepted",
+		"start": "*`/prod start`*: Start a new prod job.\n`/prod start <job id>` - start a previously run prod job, copying old parameters over\n`/prod start <job id> <oneoff> <writes> <primary read> <host> <command>` - start a new prod job, manually populating parameters\n`<job id>` must be a valid job ID (i.e., you have added it with `/prod new` or it shows up in `/prod search` or `/prod search`)\n`<oneoff>`, `<writes>`, `<primary read>` must be booleans; yes/no, true/false, 1/0 are accepted",
 		"stop": "*`/prod stop`*: Stop a job given the execution ID. This should only be used when the interactive button times out. In this case, run the command with the provided execution ID",
 	}
+	helpmsg		string			=
+		"Pharbot: A simple bot to help out with (some) Phab and (mostly) Prod related things.\n`/prod start`: start a prod job\n`/prod new`: create a new prod job\n`/prod stop`: stop a prod job\n`/prod list`: list active prod jobs\n`/prod search`: search prod jobs / execution logs"
 )
 
 func sendProdMessage(msg string) string {
@@ -137,9 +139,9 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 	case 1:
 		switch words[0] {
 		case "":
-			replyToSlash(s, "Generic help message")
+			replyToSlash(s, helpmsg)
 		case "help":
-			replyToSlash(s, "Generic help message")
+			replyToSlash(s, helpmsg)
 		default:
 			if val, ok := helptexts[words[0]]; ok {
 				replyToSlash(s, val)
