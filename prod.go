@@ -45,6 +45,7 @@ var (
 	msg_timestamp	map[int]string		= make(map[int]string)
 	helptexts	map[string]string	= map[string]string {
 		"start": "*`/prod start`*: Start a new prod job.\n`/prod start <job id>` - start a previously run prod job, copying old parameters over\n`/prod start <job id> <oneoff> <writes> <primary read> <host> <command>` - start a new prod job, manually populating parameters\n`<job id>` must be a valid job ID (i.e., you have added it with `/prod new` or it shows up in `/prod list` or `/prod search`)\n`<oneoff>`, `<writes>`, `<primary read>` must be booleans; yes/no, true/false, 1/0 are accepted",
+		"stop": "*`/prod stop`*: Stop a job given the execution ID. This should only be used when the interactive button times out. In this case, run the command with the provided execution ID",
 	}
 )
 
@@ -231,10 +232,29 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			start_attach := slack.Attachment{Text: serializeJobExecutionAndProdJob(exec, job), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
 			attachments := []slack.Attachment{start_attach}
 			replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
+			execution_log = append(execution_log, exec)
+			
 			floating_execs[exec.exec_id] = exec
 			fmt.Printf("%v\n", msg_timestamp[exec.exec_id])
 		case "search":
 			replyToSlash(s, "Not implemented yet--sorry!")
+		case "stop":
+			exec_id, _ := strconv.Atoi(words[1])
+			if _, ok := floating_execs[exec_id]; ok {
+				for _, v := range execution_log {
+					if v.exec_id == exec_id {
+						v.end_time = time.Now()
+					}
+				}
+				ts := msg_timestamp[exec_id]
+				params := slack.PostMessageParameters{ThreadTimestamp: ts}
+				msg := "Done"
+				api.PostMessage(prod_channel_id, msg, params)
+				delete(floating_execs, exec_id)
+				replyToSlash(s, fmt.Sprintf("Job stopped."))
+			} else {
+				replyToSlash(s, "It appears this job has already been completed.")
+			}
 		case "new":
 			replyToSlash(s, "Not implemented yet--sorry!")
 		}
@@ -252,10 +272,31 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			exec := floating_execs[exec_id]
 			job := getProdJob(exec.job_id)
-			sendProdMessage(fmt.Sprintf("%v\n", serializeProdJobAndJobExecution(job, exec)))
-			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("Thanks. Your message has been posted. The prod spreadsheet will update shortly.")))
-		} else {
+			ts := sendProdMessage(fmt.Sprintf("%v\n", serializeProdJobAndJobExecution(job, exec)))
+			msg_timestamp[exec_id] = ts
+			exec.start_time = time.Now()
+			done_action := slack.AttachmentAction{Name: "done", Value: "done", Text: "Finish Job", Type: "button"}
+			done_attach := slack.Attachment{Text: fmt.Sprintf("This button will expire in 30 minutes. If you would like to end the job after this time, please run `/prod stop %v`", exec_id), Actions: []slack.AttachmentAction{done_action}, CallbackID: cb.CallbackID}
+			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessageAttachments("Thanks. Your message has been posted. The prod spreadsheet will update shortly. Click the button below when you have completed the job.", []slack.Attachment{done_attach})))
+		} else if cb.Actions[0].Name == "cancel" {
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("This job has been cancelled.")))
+		} else {
+			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
+			if _, ok := floating_execs[exec_id]; ok {
+				for _, v := range execution_log {
+					if v.exec_id == exec_id {
+						v.end_time = time.Now()
+					}
+				}
+				ts := msg_timestamp[exec_id]
+				params := slack.PostMessageParameters{ThreadTimestamp: ts}
+				msg := "Done"
+				api.PostMessage(prod_channel_id, msg, params)
+				http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("Thanks! This job has been completed.")))
+				delete(floating_execs, exec_id)
+			} else {
+				http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("It appears this job has already been completed.")))
+			}
 		}
 	}
 }
