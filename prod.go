@@ -293,12 +293,12 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 		if cb.Actions[0].Name == "start" {
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			exec := floating_execs[exec_id]
-			execution_log = append(execution_log, exec)
-			WriteExecution(exec)
 			job := getProdJob(exec.job_id)
 			ts := sendProdMessage(fmt.Sprintf("%v\n", serializeProdJobAndJobExecution(job, exec)))
 			msg_timestamp[exec_id] = ts
 			exec.start_time = time.Now()
+			execution_log = append(execution_log, exec)
+			WriteExecution(exec)
 			done_action := slack.AttachmentAction{Name: "done", Value: "done", Text: "Finish Job", Type: "button"}
 			done_attach := slack.Attachment{Text: fmt.Sprintf("This button will expire in 30 minutes. If you would like to end the job after this time, please run `/prod stop %v`", exec_id), Actions: []slack.AttachmentAction{done_action}, CallbackID: cb.CallbackID}
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessageAttachments("Thanks. Your message has been posted. The prod spreadsheet will update shortly. Click the button below when you have completed the job.", []slack.Attachment{done_attach})))
