@@ -43,6 +43,9 @@ var (
 	prod_channel_id string			= "CA60G6WRH"
 	floating_execs	map[int]JobExecution	= make(map[int]JobExecution)
 	msg_timestamp	map[int]string		= make(map[int]string)
+	helptexts	map[string]string	= map[string]string {
+		"start": "*`/prod start`*: Start a new prod job.\n`/prod start <job id>` - start a previously run prod job, copying old parameters over\n`/prod start <job id> <oneoff> <writes> <primary read> <host> <command>` - start a new prod job, manually populating parameters\n`<job id>` must be a valid job ID (i.e., you have added it with `/prod new` or it shows up in `/prod list` or `/prod search`)\n`<oneoff>`, `<writes>`, `<primary read>` must be booleans; yes/no, true/false, 1/0 are accepted",
+	}
 )
 
 func sendProdMessage(msg string) string {
@@ -101,6 +104,19 @@ func serializeJobExecution(exec JobExecution) string {
 				exec.job_id, exec.run_user, exec.one_off, exec.writes, exec.primary_read, exec.host, exec.command)
 }
 
+func serializeProdJob(job ProdJob) string {
+	return fmt.Sprintf("Job notification on the behalf of @%v\n[prod] [job id %v] %v", job.owner, job.job_id, job.summary)
+}
+
+func getProdJob(job_id int) ProdJob {
+	for _, job := range prod_jobs {
+		if job.job_id == job_id {
+			return job
+		}
+	}
+	return ProdJob{}
+}
+
 func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	msg := strings.TrimSpace(s.Text)
@@ -110,14 +126,29 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 	case 1:
 		switch words[0] {
 		case "":
-			w.Write(marshalMessage("Generic help message"))
+			replyToSlash(s, "Generic help message")
+		case "help":
+			replyToSlash(s, "Generic help message")
 		default:
-			// Write help message for specific command and exit
-			w.Write(marshalMessage(fmt.Sprintf("Help message specific to %s", words[0])))
+			if val, ok := helptexts[words[0]]; ok {
+				replyToSlash(s, val)
+			} else {
+				replyToSlash(s, fmt.Sprintf("`%v` is not a valid command", words[0]))
+			}
 		}
 	default:
 		// Long enough message to do proper commands
 		switch words[0] {
+		case "help":
+			if len(words) == 2 {
+				if val, ok := helptexts[words[1]]; ok {
+					replyToSlash(s, val)
+				} else {
+					replyToSlash(s, fmt.Sprintf("`%v` is not a valid command", words[1]))
+				}
+			} else {
+				replyToSlash(s, "Help can only be called on one command at a time")
+			}
 		case "start":
 
 			exec := JobExecution{}
@@ -179,6 +210,12 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 				exec = generateExecution(job_id, s.UserName, oneoff, writes, primary_read, host, command)
 			}
 			
+			job := getProdJob(exec.job_id)
+			if (job == ProdJob{}) {
+				replyToSlash(s, fmt.Sprintf("Could not find a prod job with ID %v; perhaps try `/prod new`?", exec.job_id))
+				return
+			}
+
 			start_action := slack.AttachmentAction{Name: "start", Value: "start", Text: "Start Job", Type: "button", Style: "primary"}
 			cancel_action := slack.AttachmentAction{Name: "cancel", Value: "cancel", Text: "Cancel", Type: "button", Style: "danger"}
 			start_attach := slack.Attachment{Text: serializeJobExecution(exec), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
@@ -187,7 +224,9 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			floating_execs[exec.exec_id] = exec
 			fmt.Printf("%v\n", msg_timestamp[exec.exec_id])
 		case "search":
-			w.Write(marshalMessage("Not implemented yet. Sorry!"))
+			replyToSlash(s, "Not implemented yet--sorry!")
+		case "new":
+			replyToSlash(s, "Not implemented yet--sorry!")
 		}
 	}	
 }
@@ -202,8 +241,8 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 		if cb.Actions[0].Name == "start" {
 			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
 			exec := floating_execs[exec_id]
-			fmt.Printf("Send message to prod")
-			sendProdMessage(fmt.Sprintf("Start Prod Job:\n%v", serializeJobExecution(exec)))
+			job := getProdJob(exec.job_id)
+			sendProdMessage(fmt.Sprintf("%v\n", serializeProdJob(job)))
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("Thanks. Your message has been posted. The prod spreadsheet will update shortly.")))
 		} else {
 			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("This job has been cancelled.")))
