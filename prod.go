@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"strconv"
 	"os"
+	"bytes"
 	"github.com/nlopes/slack"
 )
 
@@ -45,7 +46,7 @@ var (
 )
 
 func sendProdMessage(msg string) string {
-	params := slack.PostMessageParameters{}
+	params := slack.PostMessageParameters{LinkNames: 1, Markdown: true}
 	_, timestamp, _ := api.PostMessage(prod_channel_id, msg, params)
 	fmt.Printf("sendProdMessage: %v\n", timestamp)
 	return timestamp
@@ -182,9 +183,8 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			cancel_action := slack.AttachmentAction{Name: "cancel", Value: "cancel", Text: "Cancel", Type: "button", Style: "danger"}
 			start_attach := slack.Attachment{Text: serializeJobExecution(exec), Actions: []slack.AttachmentAction{start_action, cancel_action}, CallbackID: fmt.Sprintf("prod_start_%v", exec.exec_id)}
 			attachments := []slack.Attachment{start_attach}
-			ts := replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
+			replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
 			floating_execs[exec.exec_id] = exec
-			msg_timestamp[exec.exec_id] = s.ChannelID + "|" + ts
 			fmt.Printf("%v\n", msg_timestamp[exec.exec_id])
 		case "search":
 			w.Write(marshalMessage("Not implemented yet. Sorry!"))
@@ -204,12 +204,9 @@ func HandleProdAction(cb slack.AttachmentActionCallback, w http.ResponseWriter) 
 			exec := floating_execs[exec_id]
 			fmt.Printf("Send message to prod")
 			sendProdMessage(fmt.Sprintf("Start Prod Job:\n%v", serializeJobExecution(exec)))
+			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("Thanks. Your message has been posted. The prod spreadsheet will update shortly.")))
 		} else {
-			exec_id, _ := strconv.Atoi(cb.CallbackID[len("prod_start_"):])
-			s := msg_timestamp[exec_id]
-			fmt.Printf("Timestamp str: %v\n", s)
-			xs := strings.Split(s, "|")
-			api.DeleteMessage(xs[0], xs[1])
+			http.Post(cb.ResponseURL, "application/json", bytes.NewBuffer(marshalMessage("This job has been cancelled.")))
 		}
 	}
 }
