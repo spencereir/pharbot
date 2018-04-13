@@ -233,7 +233,8 @@ func HandleProdRequest(s slack.SlashCommand, w http.ResponseWriter) {
 			attachments := []slack.Attachment{start_attach}
 			replyToSlashWithAttachments(s, "Please inspect the below job for correctness. Click 'Start Job' to add this job to the spreadsheet in a few minutes, and message #prod immediately. Click 'Cancel' to delete it.", attachments)
 			execution_log = append(execution_log, exec)
-			
+			WriteExecution(exec)
+				
 			floating_execs[exec.exec_id] = exec
 			fmt.Printf("%v\n", msg_timestamp[exec.exec_id])
 		case "search":

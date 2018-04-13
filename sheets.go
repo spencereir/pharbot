@@ -191,9 +191,14 @@ func LoadSheets() {
 
 
 func WriteExecution(exec JobExecution) {
+    b, err := ioutil.ReadFile("client_secret.json")
+    if err != nil {
+        log.Fatalf("Unable to read client secret file: %v", err)
+    }
+
     config, _ := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
 
-    c, _ := getClient(config)
+    c := getClient(config)
 
     sheetsService, _ := sheets.New(c)
 
@@ -201,28 +206,26 @@ func WriteExecution(exec JobExecution) {
 
     rangeData := "Execution Audit Log!A3:L"
 
-    valueInputOption := ""
-
-    insertDataOption := ""
-
-    values := []interface{}
-    values = append(values, exec.start_time)
-    values = append(values, exec.end_time)
-    values = append(values, exec.run_user)
-    values = append(values, exec.job_id)
-    values = append(values, exec.run_user)
-    values = append(values, exec.one_off)
-    values = append(values, exec.writes)
-    values = append(values, exec.primary_read)
-    values = append(values, exec.host)
-    values = append(values, exec.command)
+    var values [][]interface{}
+    var one_row []interface{}
+    values = append(values, one_row)
+    values[0] = append(values[0], exec.start_time)
+    values[0] = append(values[0], exec.end_time)
+    values[0] = append(values[0], exec.run_user)
+    values[0] = append(values[0], exec.job_id)
+    values[0] = append(values[0], exec.run_user)
+    values[0] = append(values[0], exec.one_off)
+    values[0] = append(values[0], exec.writes)
+    values[0] = append(values[0], exec.primary_read)
+    values[0] = append(values[0], exec.host)
+    values[0] = append(values[0], exec.command)
 
     rb := &sheets.ValueRange{
-        range: range_data,
-        values: values
+        Range: rangeData,
+        Values: values,
     }
 
-    resp, _ := sheetsService.Spreadsheets.Values.Append(spreadsheetId, range2, rb)
+    resp := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb)
 
-    fmt.Printf("%#v\n")
+    fmt.Printf("%v\n", resp)
 }
