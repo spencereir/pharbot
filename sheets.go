@@ -339,6 +339,6 @@ func MarkExecCompleted(exec JobExecution) {
    valueInputOption := "USER_ENTERED"
    insertDataOption := "INSERT_ROWS"
    ctx := context.Background()
-   resp, _ := sheetsService.Spreadsheets.Values.Update(spreadsheetId, rangeData, rb).ValueInputOption(valueInputOption).InsertDataOption(insertDataOption).Context(ctx).Do()
+   resp, _ := sheetsService.Spreadsheets.Values.Update(spreadsheetId, rowData, rb).ValueInputOption(valueInputOption).InsertDataOption(insertDataOption).Context(ctx).Do()
    fmt.Printf("%v\n", resp)
 }
