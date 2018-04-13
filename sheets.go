@@ -191,6 +191,7 @@ func LoadSheets() {
 
 
 func WriteExecution(exec JobExecution) {
+    ctx := context.Background()
     b, err := ioutil.ReadFile("client_secret.json")
     if err != nil {
         log.Fatalf("Unable to read client secret file: %v", err)
@@ -225,7 +226,7 @@ func WriteExecution(exec JobExecution) {
         Values: values,
     }
 
-    resp := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb)
+    resp := sheetsService.Spreadsheets.Values.Append(spreadsheetId, rangeData, rb).ValueInputOption("").InsertDataOption("").Context(ctx).Do()
 
     fmt.Printf("%v\n", resp)
 }
