@@ -21,7 +21,5 @@ func HandlePhabRequest(s slack.SlashCommand, w http.ResponseWriter) {
     w.Header().Set("Content-Type", "application/json")
     msg := strings.TrimSpace(s.Text)
     words := strings.Split(msg, " ")
-    if len(words) > 0 {
-	return
-    }
+    w.Write(marshalMessage(msg))
 }
