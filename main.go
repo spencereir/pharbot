@@ -48,7 +48,7 @@ func main() {
 			w.Write(b)
 		case "/prod":
 			HandleProdRequest(s, w)
-		case "/cherrypick":
+		case "/cherry-pick":
 			HandlePhabRequest(s, w)
 		default:
 			w.WriteHeader(http.StatusInternalServerError)
