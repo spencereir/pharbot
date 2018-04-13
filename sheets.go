@@ -189,3 +189,40 @@ func LoadSheets() {
         }
 }
 
+
+func WriteExecution(exec JobExecution) {
+    config, _ := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
+
+    c, _ := getClient(config)
+
+    sheetsService, _ := sheets.New(c)
+
+    spreadsheetId := "1B84DImukPyqhSMDJmpE_lFZakMrAktdPfxp-emrR6Gc"
+
+    rangeData := "Execution Audit Log!A3:L"
+
+    valueInputOption := ""
+
+    insertDataOption := ""
+
+    values := []interface{}
+    values = append(values, exec.start_time)
+    values = append(values, exec.end_time)
+    values = append(values, exec.run_user)
+    values = append(values, exec.job_id)
+    values = append(values, exec.run_user)
+    values = append(values, exec.one_off)
+    values = append(values, exec.writes)
+    values = append(values, exec.primary_read)
+    values = append(values, exec.host)
+    values = append(values, exec.command)
+
+    rb := &sheets.ValueRange{
+        range: range_data,
+        values: values
+    }
+
+    resp, _ := sheetsService.Spreadsheets.Values.Append(spreadsheetId, range2, rb)
+
+    fmt.Printf("%#v\n")
+}
